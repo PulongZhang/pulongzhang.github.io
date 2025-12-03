@@ -27,14 +27,22 @@ tags: 标签1 标签2
 
 ```markdown
 ---
+layout: article             # 推荐，使用 article 布局
 title: 文章标题              # 必填
+key: 20251203-article-name  # 必填，文章唯一标识符（格式：年月日-主题）
 tags: 标签1 标签2           # 可选，多个标签用空格分隔
-layout: article             # 可选，默认是 article
 author: 张蒲龙              # 可选
-show_author_profile: true   # 可选，是否显示作者信息
-date: 2025-12-01 14:30:00   # 可选，手动指定日期时间
+aside:                      # 可选，侧边栏配置
+  toc: true                 # 显示文章目录
 ---
 ```
+
+**重要字段说明：**
+- `key`: 文章的唯一标识符（**必填**）
+  - **格式规范**：`YYYYMMDD-主题名称`（如 `20251203-my-first-post`）
+  - 日期部分：8位数字，格式为年月日（如 `20251203`）
+  - 主题部分：使用小写英文和连字符，简短描述文章主题（如 `ai-agent`、`life-thinking`）
+  - 这个字段用于文章的内部引用和永久链接生成
 
 ## 文章摘要分隔符
 
