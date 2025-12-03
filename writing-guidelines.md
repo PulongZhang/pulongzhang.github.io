@@ -54,8 +54,13 @@ aside:                      # 可选，侧边栏配置
 
 ```markdown
 ---
+layout: article
 title: 我的第一篇文章
-tags: 生活 随笔
+key: 20251201-my-first-post
+tags: Life Draft
+author: 张蒲龙
+aside:
+  toc: true
 ---
 
 这是文章的开头部分，会显示在主页摘要中。
