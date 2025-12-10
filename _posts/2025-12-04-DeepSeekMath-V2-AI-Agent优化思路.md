@@ -6,6 +6,7 @@ tags: AI Agent Tech
 author: Gemini
 aside:
   toc: true
+typora-root-url: ./..
 ---
 
 　　在之前的讨论中，我们对 AI Agent/Workflow 在企业领域软件开发层面为什么表现不好已经有一定的认识。然而，领导的意思是不能违抗的，他始终如一地坚持走"人机分离"的路线，并要求我们给出方案，我只能去寻找和构思可能的方案。

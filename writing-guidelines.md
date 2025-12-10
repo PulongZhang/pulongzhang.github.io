@@ -34,6 +34,7 @@ tags: 标签1 标签2           # 可选，多个标签用空格分隔
 author: 张蒲龙              # 可选
 aside:                      # 可选，侧边栏配置
   toc: true                 # 显示文章目录
+typora-root-url: ./..       # Typora 编辑器图片路径配置
 ---
 ```
 
@@ -61,6 +62,7 @@ tags: Life Draft
 author: 张蒲龙
 aside:
   toc: true
+typora-root-url: ./..
 ---
 
 这是文章的开头部分，会显示在主页摘要中。
