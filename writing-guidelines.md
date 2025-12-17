@@ -45,6 +45,54 @@ typora-root-url: ./..       # Typora 编辑器图片路径配置
   - 主题部分：使用小写英文和连字符，简短描述文章主题（如 `ai-agent`、`life-thinking`）
   - 这个字段用于文章的内部引用和永久链接生成
 
+## 作者管理（authors.yml）
+
+如果文章需要指定作者，需要先在 `_data/authors.yml` 文件中添加作者信息。
+
+### 添加新作者
+
+在 `_data/authors.yml` 中按以下格式添加作者：
+
+```yaml
+作者名称:
+  name: 作者名称
+  avatar: 头像链接（可选）
+  bio: 个人简介
+  email: 邮箱地址（可选）
+  github: GitHub用户名（可选）
+  zhihu: 知乎ID（可选）
+```
+
+### 示例
+
+```yaml
+张蒲龙:
+  name: 张蒲龙
+  avatar:
+  bio: 瞻彼日月,悠悠我思,道之云远,曷云能来
+  email: puzzle1779746770@outlook.com
+  github: PulongZhang
+  zhihu: long-long-long-long-long-5
+
+李子恒:
+  name: 李子恒
+  avatar:
+  bio:
+  email:
+```
+
+### 在文章中使用作者
+
+在文章的 Front Matter 中使用 `author` 字段指定作者名称（必须与 authors.yml 中的键名完全一致）：
+
+```markdown
+---
+layout: article
+title: 文章标题
+author: 张蒲龙
+---
+```
+
 ## 文章摘要分隔符
 
 使用 `<!--more-->` 来分隔文章摘要和正文：

@@ -96,5 +96,5 @@ $$
 
 ---
 
-*池上听雷阶前看雨，花开千年人犹不老，终究只是年少时候的梦想*
+[如何提问？](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)
 
