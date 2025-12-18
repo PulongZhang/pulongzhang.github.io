@@ -1,3 +1,20 @@
 /* start custom scss snippet */
 
+/* 中文段落首行缩进 */
+.article__content {
+    >p {
+        text-indent: 2em;
+    }
+}
+
+/* 隐藏标题旁的"在 GitHub 上编辑"图标 */
+.article__header .edit-on-github {
+    display: none !important;
+}
+
+/* 隐藏订阅按钮 */
+.subscribe {
+    display: none !important;
+}
+
 /* end custom scss snippet */
