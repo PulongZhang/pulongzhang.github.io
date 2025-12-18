@@ -5,6 +5,13 @@
     >p {
         text-indent: 2em;
     }
+
+    /* 图片居中 */
+    img:not(.emoji) {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 
 /* 隐藏标题旁的"在 GitHub 上编辑"图标 */

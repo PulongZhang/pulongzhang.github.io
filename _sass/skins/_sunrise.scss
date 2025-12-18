@@ -1,0 +1,76 @@
+///
+// Skin: Sunrise (日出)
+// A fresh theme with blue, white, orange, and pink
+// Author: Custom
+///
+
+// main colors - 主色调：清新蓝色
+$main-color-1: #3498db; // 天空蓝 - 链接、强调色
+$text-color-1: #fff;
+
+// 辅助色：温暖橙色
+$main-color-2: #f39c12; // 橙金色 - 悬停、次要强调
+$text-color-2: #fff;
+
+// 背景色：柔和粉白
+$main-color-3: #fdf2f8; // 淡粉白 - 头部、底部背景
+$text-color-3: #4a5568; // 深灰蓝文字
+
+$main-color-theme-light: rgba(#000, .9);
+$main-color-theme-dark: rgba(#fff, .9);
+
+// page background - 页面背景：纯白
+$background-color: #fff;
+
+// text colors - 文字颜色
+$text-color-theme-light-d: #1a202c; // 深色标题
+$text-color-theme-light: #2d3748; // 正文
+$text-color-theme-light-l: #718096; // 浅色辅助文字
+
+$text-color-theme-dark-d: #fff;
+$text-color-theme-dark: rgba(#fff, .95);
+$text-color-theme-dark-l: rgba(#fff, .85);
+
+$text-color-d: $text-color-theme-light-d;
+$text-color: $text-color-theme-light;
+$text-color-l: $text-color-theme-light-l;
+
+$text-background-color: rgba(#3498db, .06); // 代码块背景带一点蓝
+
+// header and footer colors - 头部底部
+$header-text-color: $text-color-3;
+$header-background: $main-color-3;
+
+$footer-text-color: $text-color-3;
+$footer-background: $main-color-3;
+
+// border and shadow colors - 边框阴影
+$border-color: mix(#3498db, $background-color, 15%); // 淡蓝边框
+$border-color-l: mix(#3498db, $background-color, 8%);
+$decorate-color: rgba(#3498db, .1);
+$mask-color: rgba(#1a202c, .9);
+$select-color: rgba(#f8b4d9, .4); // 粉色选中效果
+
+// function colors - 功能色
+$green: #48bb78;
+$blue: #3498db;
+$yellow: #f39c12;
+$red: #fc8181; // 柔和的粉红色代替纯红
+$text-color-function: #fff;
+
+// logo colors - 社交图标颜色
+$mail-color: #3498db;
+$facebook-color: #4267b2;
+$twitter-color: #1da1f2;
+$weibo-color: #f39c12;
+$google-plus-color: #ea4335;
+$telegram-color: #32afed;
+$medium-color: #2d3748;
+$zhihu-color: #3498db;
+$douban-color: #48bb78;
+$linkedin-color: #1074af;
+$github-color: #2d3748;
+$npm-color: #fff;
+
+// highlight colors - 代码高亮
+@import "skins/highlight/tomorrow";
