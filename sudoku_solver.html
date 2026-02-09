@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数独求解器 - 可视化版</title>
+    <title>智能数独求解器 - 约束传播算法</title>
     <style>
         * {
             margin: 0;
@@ -26,14 +26,21 @@
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 650px;
+            max-width: 700px;
         }
 
         h1 {
             text-align: center;
             color: #667eea;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #764ba2;
+            margin-bottom: 30px;
+            font-size: 0.9em;
         }
 
         .sudoku-grid {
@@ -47,8 +54,8 @@
         }
 
         .sudoku-cell {
-            width: 50px;
-            height: 50px;
+            width: 55px;
+            height: 55px;
             border: 1px solid #999;
             text-align: center;
             font-size: 24px;
@@ -69,15 +76,22 @@
             font-weight: bold;
         }
 
-        .sudoku-cell.solving {
+        .sudoku-cell.constraint {
             background: #fff9c4;
             color: #f57f17;
-            animation: pulse 0.5s;
+            animation: fadeIn 0.3s;
         }
 
         .sudoku-cell.solved {
             background: #c8e6c9;
             color: #2e7d32;
+            animation: popIn 0.3s;
+        }
+
+        .sudoku-cell.trying {
+            background: #e1bee7;
+            color: #6a1b9a;
+            animation: pulse 0.5s;
         }
 
         .sudoku-cell.backtrack {
@@ -86,18 +100,28 @@
             animation: shake 0.3s;
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.05); }
         }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
         }
 
-        /* 3×3宫格的粗边框 */
         .sudoku-cell:nth-child(9n+3),
         .sudoku-cell:nth-child(9n+6) {
             border-right: 3px solid #333;
@@ -172,32 +196,18 @@
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
 
-        .stop-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
-        }
-
         .clear-btn {
             background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
-        .clear-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(250, 112, 154, 0.4);
         }
 
         .example-btn {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
-        .example-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
-        }
-
         .stats {
-            display: flex;
-            justify-content: space-around;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
             margin-top: 20px;
             padding: 15px;
             background: #f5f5f5;
@@ -209,13 +219,13 @@
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
             margin-bottom: 5px;
         }
 
         .stat-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #667eea;
         }
@@ -228,206 +238,420 @@
             min-height: 30px;
         }
 
-        .success {
-            color: #2e7d32;
-        }
-
-        .error {
-            color: #c62828;
-        }
-
-        .info {
-            color: #1565c0;
-            font-size: 14px;
-            text-align: center;
-            margin-top: 20px;
-        }
+        .success { color: #2e7d32; }
+        .error { color: #c62828; }
+        .info { color: #1565c0; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🧩 数独求解器</h1>
+        <h1>🧠 智能数独求解器</h1>
+        <div class="subtitle">约束传播 + MRV启发式算法</div>
 
         <div class="sudoku-grid" id="sudokuGrid"></div>
 
         <div class="controls">
             <div class="speed-control">
                 <label>求解速度：</label>
-                <input type="range" id="speedSlider" min="0" max="200" value="50" step="10">
-                <span class="speed-value" id="speedValue">50ms</span>
+                <input type="range" id="speedSlider" min="0" max="200" value="30" step="10">
+                <span class="speed-value" id="speedValue">30ms</span>
             </div>
 
             <div class="button-group">
-                <button class="solve-btn" id="solveBtn" onclick="startSolving()">🚀 开始求解</button>
+                <button class="solve-btn" id="solveBtn" onclick="startSolving()">🚀 智能求解</button>
                 <button class="stop-btn" id="stopBtn" onclick="stopSolving()" disabled>⏸️ 停止</button>
-                <button class="clear-btn" id="clearBtn" onclick="clearGrid()">🗑️ 清空</button>
-                <button class="example-btn" id="exampleBtn" onclick="loadExample()">📝 示例</button>
+                <button class="clear-btn" onclick="clearGrid()">🗑️ 清空</button>
+                <button class="example-btn" onclick="loadExample()">📝 示例</button>
             </div>
         </div>
 
         <div class="stats">
             <div class="stat-item">
-                <div class="stat-label">尝试次数</div>
-                <div class="stat-value" id="attempts">0</div>
+                <div class="stat-label">逻辑推理</div>
+                <div class="stat-value" id="logic">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">猜测次数</div>
+                <div class="stat-value" id="guesses">0</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">回溯次数</div>
                 <div class="stat-value" id="backtracks">0</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">已用时间</div>
-                <div class="stat-value" id="timeElapsed">0s</div>
+                <div class="stat-label">用时</div>
+                <div class="stat-value" id="time">0s</div>
             </div>
         </div>
 
         <div class="message" id="message"></div>
-        <div class="info">💡 提示：输入1-9的数字，调整速度，点击"开始求解"观看求解过程</div>
+        <div class="info">💡 黄色=约束传播 | 紫色=启发式猜测 | 绿色=确认答案 | 红色=回溯</div>
     </div>
 
     <script>
         let solving = false;
-        let originalGrid = [];
-        let attempts = 0;
+        let logicSteps = 0;
+        let guesses = 0;
         let backtracks = 0;
         let startTime = 0;
         let timerInterval = null;
 
-        // 创建9×9网格
+        // 位运算工具函数
+        const ALL_CANDIDATES = 0b111111111; // 1-9都可能
+
+        function popcount(n) {
+            // 计算二进制中1的个数
+            let count = 0;
+            while (n) {
+                count += n & 1;
+                n >>= 1;
+            }
+            return count;
+        }
+
+        function getCandidatesList(mask) {
+            // 将位掩码转换为数字数组
+            const list = [];
+            for (let i = 0; i < 9; i++) {
+                if (mask & (1 << i)) {
+                    list.push(i + 1);
+                }
+            }
+            return list;
+        }
+
         function createGrid() {
             const grid = document.getElementById('sudokuGrid');
             grid.innerHTML = '';
-
             for (let i = 0; i < 81; i++) {
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'sudoku-cell';
                 input.maxLength = 1;
                 input.id = `cell-${i}`;
-
-                // 只允许输入1-9
                 input.addEventListener('input', function(e) {
                     const value = e.target.value;
                     if (value && (value < '1' || value > '9')) {
                         e.target.value = '';
                     }
                 });
-
                 grid.appendChild(input);
             }
         }
 
-        // 获取网格数据
         function getGridData() {
             const grid = [];
             for (let i = 0; i < 9; i++) {
                 grid[i] = [];
                 for (let j = 0; j < 9; j++) {
                     const cell = document.getElementById(`cell-${i * 9 + j}`);
-                    const value = cell.value;
-                    grid[i][j] = value ? parseInt(value) : 0;
+                    grid[i][j] = cell.value ? parseInt(cell.value) : 0;
                 }
             }
             return grid;
         }
 
-        // 更新单元格显示
         function updateCell(row, col, value, className = '') {
             const cell = document.getElementById(`cell-${row * 9 + col}`);
             cell.value = value || '';
-
-            // 移除所有状态类
-            cell.classList.remove('solving', 'solved', 'backtrack');
-
-            // 添加新的状态类
-            if (className) {
-                cell.classList.add(className);
-            }
+            cell.classList.remove('constraint', 'solved', 'trying', 'backtrack');
+            if (className) cell.classList.add(className);
         }
 
-        // 检查数字是否可以放在指定位置
-        function isValid(grid, row, col, num) {
-            // 检查行
-            for (let x = 0; x < 9; x++) {
-                if (grid[row][x] === num) {
-                    return false;
-                }
-            }
-
-            // 检查列
-            for (let x = 0; x < 9; x++) {
-                if (grid[x][col] === num) {
-                    return false;
-                }
-            }
-
-            // 检查3×3宫格
-            const startRow = row - row % 3;
-            const startCol = col - col % 3;
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    if (grid[i + startRow][j + startCol] === num) {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        // 延迟函数
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 异步回溯算法求解数独
-        async function solveAsync(grid) {
-            if (!solving) return false;
+        function initCandidates(grid) {
+            // 使用位运算初始化候选数字
+            const candidates = Array(9).fill(null).map(() =>
+                Array(9).fill(ALL_CANDIDATES)
+            );
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] !== 0) {
+                        eliminateValue(candidates, row, col, grid[row][col]);
+                    }
+                }
+            }
+            return candidates;
+        }
+
+        function eliminateValue(candidates, row, col, value) {
+            const mask = 1 << (value - 1);
+            candidates[row][col] = mask; // 该格子只能是这个值
+
+            // 从同行删除
+            for (let c = 0; c < 9; c++) {
+                if (c !== col) {
+                    candidates[row][c] &= ~mask;
+                }
+            }
+
+            // 从同列删除
+            for (let r = 0; r < 9; r++) {
+                if (r !== row) {
+                    candidates[r][col] &= ~mask;
+                }
+            }
+
+            // 从同宫格删除
+            const boxRow = Math.floor(row / 3) * 3;
+            const boxCol = Math.floor(col / 3) * 3;
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    if (r !== row || c !== col) {
+                        candidates[r][c] &= ~mask;
+                    }
+                }
+            }
+        }
+
+        function hasContradiction(grid, candidates) {
+            // 检测矛盾：空格子没有候选数字
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0 && candidates[row][col] === 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function findHiddenSingles(grid, candidates) {
+            const found = [];
+
+            // 检查每一行
+            for (let row = 0; row < 9; row++) {
+                for (let num = 1; num <= 9; num++) {
+                    const mask = 1 << (num - 1);
+                    const positions = [];
+                    for (let col = 0; col < 9; col++) {
+                        if (grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                            positions.push(col);
+                        }
+                    }
+                    if (positions.length === 1) {
+                        found.push({ row, col: positions[0], value: num });
+                    }
+                }
+            }
+
+            // 检查每一列
+            for (let col = 0; col < 9; col++) {
+                for (let num = 1; num <= 9; num++) {
+                    const mask = 1 << (num - 1);
+                    const positions = [];
+                    for (let row = 0; row < 9; row++) {
+                        if (grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                            positions.push(row);
+                        }
+                    }
+                    if (positions.length === 1) {
+                        const row = positions[0];
+                        if (!found.some(f => f.row === row && f.col === col)) {
+                            found.push({ row, col, value: num });
+                        }
+                    }
+                }
+            }
+
+            // 检查每个宫格
+            for (let boxRow = 0; boxRow < 3; boxRow++) {
+                for (let boxCol = 0; boxCol < 3; boxCol++) {
+                    for (let num = 1; num <= 9; num++) {
+                        const mask = 1 << (num - 1);
+                        const positions = [];
+                        for (let r = 0; r < 3; r++) {
+                            for (let c = 0; c < 3; c++) {
+                                const row = boxRow * 3 + r;
+                                const col = boxCol * 3 + c;
+                                if (grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                                    positions.push({ row, col });
+                                }
+                            }
+                        }
+                        if (positions.length === 1) {
+                            const { row, col } = positions[0];
+                            if (!found.some(f => f.row === row && f.col === col)) {
+                                found.push({ row, col, value: num });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        async function propagateConstraints(grid, candidates, speed) {
+            let progress = true;
+            while (progress && solving) {
+                progress = false;
+
+                // 裸单数法：只有一个候选数字的格子
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (grid[row][col] === 0 && popcount(candidates[row][col]) === 1) {
+                            const value = getCandidatesList(candidates[row][col])[0];
+                            grid[row][col] = value;
+
+                            logicSteps++;
+                            document.getElementById('logic').textContent = logicSteps;
+
+                            updateCell(row, col, value, 'constraint');
+                            await delay(speed);
+
+                            eliminateValue(candidates, row, col, value);
+                            updateCell(row, col, value, 'solved');
+                            progress = true;
+                        }
+                    }
+                }
+
+                // 隐单数法：某数字在某区域只有一个位置
+                if (!progress) {
+                    const hiddenSingles = findHiddenSingles(grid, candidates);
+                    if (hiddenSingles.length > 0) {
+                        for (const { row, col, value } of hiddenSingles) {
+                            if (grid[row][col] === 0) {
+                                grid[row][col] = value;
+
+                                logicSteps++;
+                                document.getElementById('logic').textContent = logicSteps;
+
+                                updateCell(row, col, value, 'constraint');
+                                await delay(speed);
+
+                                eliminateValue(candidates, row, col, value);
+                                updateCell(row, col, value, 'solved');
+                                progress = true;
+                            }
+                        }
+                    }
+                }
+
+                // 检测矛盾
+                if (hasContradiction(grid, candidates)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function findBestCell(grid, candidates) {
+            let minCandidates = 10;
+            let bestCell = null;
 
             for (let row = 0; row < 9; row++) {
                 for (let col = 0; col < 9; col++) {
                     if (grid[row][col] === 0) {
-                        for (let num = 1; num <= 9; num++) {
-                            if (!solving) return false;
-
-                            attempts++;
-                            document.getElementById('attempts').textContent = attempts;
-
-                            if (isValid(grid, row, col, num)) {
-                                grid[row][col] = num;
-                                updateCell(row, col, num, 'solving');
-
-                                const speed = parseInt(document.getElementById('speedSlider').value);
-                                await delay(speed);
-
-                                if (await solveAsync(grid)) {
-                                    updateCell(row, col, num, 'solved');
-                                    return true;
-                                }
-
-                                if (!solving) return false;
-
-                                // 回溯
-                                backtracks++;
-                                document.getElementById('backtracks').textContent = backtracks;
-
-                                grid[row][col] = 0;
-                                updateCell(row, col, 0, 'backtrack');
-                                await delay(speed / 2);
-                            }
+                        const count = popcount(candidates[row][col]);
+                        if (count === 0) return null; // 矛盾
+                        if (count < minCandidates) {
+                            minCandidates = count;
+                            bestCell = { row, col };
+                            if (count === 1) return bestCell;
                         }
-                        return false;
                     }
                 }
             }
-            return true;
+            return bestCell;
         }
 
-        // 开始求解
-        async function startSolving() {
-            const grid = getGridData();
-            originalGrid = JSON.parse(JSON.stringify(grid));
+        async function solveSmartAsync(grid, candidates) {
+            if (!solving) return false;
 
-            // 标记原始输入
+            const speed = parseInt(document.getElementById('speedSlider').value);
+
+            // 约束传播
+            if (!await propagateConstraints(grid, candidates, speed)) {
+                return false; // 发现矛盾
+            }
+
+            if (!solving) return false;
+
+            // 检查是否完成
+            let complete = true;
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0) {
+                        complete = false;
+                        break;
+                    }
+                }
+                if (!complete) break;
+            }
+            if (complete) return true;
+
+            // MRV启发式：选择候选数字最少的格子
+            const cell = findBestCell(grid, candidates);
+            if (!cell) return false;
+
+            const { row, col } = cell;
+            const possibleValues = getCandidatesList(candidates[row][col]);
+
+            // 回溯搜索
+            for (const value of possibleValues) {
+                if (!solving) return false;
+
+                guesses++;
+                document.getElementById('guesses').textContent = guesses;
+
+                // 保存状态（位运算复制更快）
+                const gridCopy = grid.map(row => [...row]);
+                const candidatesCopy = candidates.map(row => [...row]);
+
+                grid[row][col] = value;
+                updateCell(row, col, value, 'trying');
+                await delay(speed);
+
+                eliminateValue(candidates, row, col, value);
+
+                if (await solveSmartAsync(grid, candidates)) {
+                    updateCell(row, col, value, 'solved');
+                    return true;
+                }
+
+                if (!solving) return false;
+
+                // 回溯
+                backtracks++;
+                document.getElementById('backtracks').textContent = backtracks;
+
+                for (let r = 0; r < 9; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        grid[r][c] = gridCopy[r][c];
+                        candidates[r][c] = candidatesCopy[r][c];
+                    }
+                }
+
+                updateCell(row, col, 0, 'backtrack');
+                await delay(speed / 2);
+            }
+
+            return false;
+        }
+
+        async function startSolving() {
+            // 只清除求解过程中添加的格子（修复停止后继续求解的bug）
+            for (let i = 0; i < 81; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                if (cell.classList.contains('constraint') ||
+                    cell.classList.contains('solved') ||
+                    cell.classList.contains('trying') ||
+                    cell.classList.contains('backtrack')) {
+                    cell.value = '';
+                    cell.classList.remove('constraint', 'solved', 'trying', 'backtrack');
+                }
+            }
+
+            const grid = getGridData();
+            const originalGrid = JSON.parse(JSON.stringify(grid));
+
             for (let i = 0; i < 9; i++) {
                 for (let j = 0; j < 9; j++) {
                     if (originalGrid[i][j] !== 0) {
@@ -439,113 +663,92 @@
             }
 
             solving = true;
-            attempts = 0;
+            logicSteps = 0;
+            guesses = 0;
             backtracks = 0;
             startTime = Date.now();
 
-            // 更新按钮状态
             document.getElementById('solveBtn').disabled = true;
             document.getElementById('stopBtn').disabled = false;
-            document.getElementById('clearBtn').disabled = true;
-            document.getElementById('exampleBtn').disabled = true;
 
-            // 启动计时器
             timerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                document.getElementById('timeElapsed').textContent = elapsed + 's';
+                document.getElementById('time').textContent = elapsed + 's';
             }, 100);
 
             const message = document.getElementById('message');
-            message.textContent = '🔄 正在求解...';
+            message.textContent = '🔄 智能求解中...';
             message.className = 'message info';
 
-            const result = await solveAsync(grid);
+            const candidates = initCandidates(grid);
+            const result = await solveSmartAsync(grid, candidates);
 
-            // 停止计时器
             clearInterval(timerInterval);
 
             if (result && solving) {
-                message.textContent = '✅ 求解成功！';
+                message.textContent = `✅ 成功！逻辑${logicSteps}步，猜测${guesses}次`;
                 message.className = 'message success';
             } else if (!solving) {
                 message.textContent = '⏸️ 已停止';
                 message.className = 'message info';
             } else {
-                message.textContent = '❌ 无解！请检查输入';
+                message.textContent = '❌ 无解！';
                 message.className = 'message error';
             }
 
-            // 恢复按钮状态
             document.getElementById('solveBtn').disabled = false;
             document.getElementById('stopBtn').disabled = true;
-            document.getElementById('clearBtn').disabled = false;
-            document.getElementById('exampleBtn').disabled = false;
-
             solving = false;
         }
 
-        // 停止求解
         function stopSolving() {
             solving = false;
             clearInterval(timerInterval);
         }
 
-        // 清空网格
         function clearGrid() {
             for (let i = 0; i < 81; i++) {
                 const cell = document.getElementById(`cell-${i}`);
                 cell.value = '';
                 cell.disabled = false;
-                cell.classList.remove('original', 'solving', 'solved', 'backtrack');
+                cell.classList.remove('original', 'constraint', 'solved', 'trying', 'backtrack');
             }
-
-            document.getElementById('attempts').textContent = '0';
+            document.getElementById('logic').textContent = '0';
+            document.getElementById('guesses').textContent = '0';
             document.getElementById('backtracks').textContent = '0';
-            document.getElementById('timeElapsed').textContent = '0s';
+            document.getElementById('time').textContent = '0s';
             document.getElementById('message').textContent = '';
-
-            attempts = 0;
-            backtracks = 0;
         }
 
-        // 加载示例
         function loadExample() {
             clearGrid();
-
             const example = [
-                [5, 3, 0, 0, 7, 0, 0, 0, 0],
-                [6, 0, 0, 1, 9, 5, 0, 0, 0],
-                [0, 9, 8, 0, 0, 0, 0, 6, 0],
-                [8, 0, 0, 0, 6, 0, 0, 0, 3],
-                [4, 0, 0, 8, 0, 3, 0, 0, 1],
-                [7, 0, 0, 0, 2, 0, 0, 0, 6],
-                [0, 6, 0, 0, 0, 0, 2, 8, 0],
-                [0, 0, 0, 4, 1, 9, 0, 0, 5],
-                [0, 0, 0, 0, 8, 0, 0, 7, 9]
+                [8, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 3, 6, 0, 0, 0, 0, 0],
+                [0, 7, 0, 0, 9, 0, 2, 0, 0],
+                [0, 5, 0, 0, 0, 7, 0, 0, 0],
+                [0, 0, 0, 0, 4, 5, 7, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 3, 0],
+                [0, 0, 1, 0, 0, 0, 0, 6, 8],
+                [0, 0, 8, 5, 0, 0, 0, 1, 0],
+                [0, 9, 0, 0, 0, 0, 4, 0, 0]
             ];
-
             for (let i = 0; i < 9; i++) {
                 for (let j = 0; j < 9; j++) {
-                    const cell = document.getElementById(`cell-${i * 9 + j}`);
                     if (example[i][j] !== 0) {
-                        cell.value = example[i][j];
+                        document.getElementById(`cell-${i * 9 + j}`).value = example[i][j];
                     }
                 }
             }
-
-            document.getElementById('message').textContent = '📝 已加载示例数独';
+            document.getElementById('message').textContent = '📝 已加载示例';
             document.getElementById('message').className = 'message info';
         }
 
-        // 更新速度显示
         document.getElementById('speedSlider').addEventListener('input', function(e) {
             document.getElementById('speedValue').textContent = e.target.value + 'ms';
         });
 
-        // 页面加载时创建网格
-        window.onload = function() {
-            createGrid();
-        };
+        window.onload = createGrid;
     </script>
 </body>
 </html>
