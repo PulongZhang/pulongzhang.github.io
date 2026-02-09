@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能数独求解器 - 约束传播算法</title>
+    <title>数独求解器</title>
     <style>
         * {
             margin: 0;
@@ -204,6 +204,22 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
+        .save-btn {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .load-btn {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .undo-btn {
+            background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+        }
+
+        .redo-btn {
+            background: linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%);
+        }
+
         .stats {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -245,8 +261,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧠 智能数独求解器</h1>
-        <div class="subtitle">约束传播 + MRV启发式算法</div>
+        <h1>🧩 数独求解器</h1>
+        <div class="subtitle">可视化求解过程</div>
 
         <div class="sudoku-grid" id="sudokuGrid"></div>
 
@@ -258,10 +274,15 @@
             </div>
 
             <div class="button-group">
-                <button class="solve-btn" id="solveBtn" onclick="startSolving()">🚀 智能求解</button>
+                <button class="solve-btn" id="solveBtn" onclick="startSolving()">🚀 动画求解</button>
+                <button class="solve-btn" id="stepSolveBtn" onclick="solveStepByStep()">📊 逐步求解</button>
                 <button class="stop-btn" id="stopBtn" onclick="stopSolving()" disabled>⏸️ 停止</button>
+                <button class="undo-btn" id="undoBtn" onclick="stepBackward()" disabled>↶ 上一步</button>
+                <button class="redo-btn" id="redoBtn" onclick="stepForward()" disabled>↷ 下一步</button>
                 <button class="clear-btn" onclick="clearGrid()">🗑️ 清空</button>
                 <button class="example-btn" onclick="loadExample()">📝 示例</button>
+                <button class="save-btn" onclick="saveInput()">💾 保存</button>
+                <button class="load-btn" onclick="loadSaved()">📂 加载保存</button>
             </div>
         </div>
 
@@ -295,6 +316,12 @@
         let backtracks = 0;
         let startTime = 0;
         let timerInterval = null;
+        let savedGrid = null; // 保存用户输入的全局变量
+
+        // 逐步求解相关变量
+        let solutionSteps = []; // 存储所有求解步骤
+        let currentStepIndex = -1; // 当前步骤索引
+        let isStepMode = false; // 是否处于逐步模式
 
         // 位运算工具函数
         const ALL_CANDIDATES = 0b111111111; // 1-9都可能
@@ -889,6 +916,15 @@
             document.getElementById('backtracks').textContent = '0';
             document.getElementById('time').textContent = '0s';
             document.getElementById('message').textContent = '';
+
+            // 重置逐步模式
+            isStepMode = false;
+            solutionSteps = [];
+            currentStepIndex = -1;
+            document.getElementById('solveBtn').disabled = false;
+            document.getElementById('stepSolveBtn').disabled = false;
+            document.getElementById('undoBtn').disabled = true;
+            document.getElementById('redoBtn').disabled = true;
         }
 
         function loadExample() {
@@ -913,6 +949,309 @@
             }
             document.getElementById('message').textContent = '📝 已加载示例';
             document.getElementById('message').className = 'message info';
+        }
+
+        function saveInput() {
+            savedGrid = getGridData();
+            document.getElementById('message').textContent = '💾 已保存当前输入';
+            document.getElementById('message').className = 'message success';
+        }
+
+        function loadSaved() {
+            if (!savedGrid) {
+                document.getElementById('message').textContent = '❌ 没有保存的数据';
+                document.getElementById('message').className = 'message error';
+                return;
+            }
+
+            clearGrid();
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    if (savedGrid[i][j] !== 0) {
+                        document.getElementById(`cell-${i * 9 + j}`).value = savedGrid[i][j];
+                    }
+                }
+            }
+            document.getElementById('message').textContent = '📂 已加载保存的数据';
+            document.getElementById('message').className = 'message success';
+        }
+
+        function stepBackward() {
+            if (!isStepMode || currentStepIndex <= 0) {
+                document.getElementById('message').textContent = '❌ 已经是第一步';
+                document.getElementById('message').className = 'message error';
+                return;
+            }
+            currentStepIndex--;
+            displayStep(currentStepIndex);
+        }
+
+        function stepForward() {
+            if (!isStepMode || currentStepIndex >= solutionSteps.length - 1) {
+                document.getElementById('message').textContent = '❌ 已经是最后一步';
+                document.getElementById('message').className = 'message error';
+                return;
+            }
+            currentStepIndex++;
+            displayStep(currentStepIndex);
+        }
+
+        function displayStep(index) {
+            const step = solutionSteps[index];
+
+            // 清空所有格子
+            for (let i = 0; i < 81; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                cell.classList.remove('constraint', 'solved', 'trying', 'backtrack', 'original');
+            }
+
+            // 显示当前步骤的grid状态
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.getElementById(`cell-${row * 9 + col}`);
+                    const value = step.grid[row][col];
+                    cell.value = value || '';
+
+                    // 标记原始输入
+                    if (step.original && step.original[row][col] !== 0) {
+                        cell.classList.add('original');
+                        cell.disabled = true;
+                    } else {
+                        cell.disabled = false;
+                    }
+                }
+            }
+
+            // 高亮当前操作的格子
+            if (step.row !== undefined && step.col !== undefined) {
+                const cell = document.getElementById(`cell-${step.row * 9 + step.col}`);
+                cell.classList.add(step.className || 'solved');
+            }
+
+            // 更新统计信息
+            document.getElementById('logic').textContent = step.logicSteps || 0;
+            document.getElementById('guesses').textContent = step.guesses || 0;
+            document.getElementById('backtracks').textContent = step.backtracks || 0;
+
+            // 更新消息
+            const stepInfo = `步骤 ${index + 1}/${solutionSteps.length}: ${step.description || ''}`;
+            document.getElementById('message').textContent = stepInfo;
+            document.getElementById('message').className = 'message info';
+
+            // 更新按钮状态
+            document.getElementById('undoBtn').disabled = (index === 0);
+            document.getElementById('redoBtn').disabled = (index === solutionSteps.length - 1);
+        }
+
+        function solveStepByStep() {
+            // 重置状态
+            solutionSteps = [];
+            currentStepIndex = -1;
+            isStepMode = false;
+
+            const grid = getGridData();
+            const originalGrid = JSON.parse(JSON.stringify(grid));
+
+            // 记录初始状态
+            solutionSteps.push({
+                grid: JSON.parse(JSON.stringify(grid)),
+                original: originalGrid,
+                description: '初始状态',
+                logicSteps: 0,
+                guesses: 0,
+                backtracks: 0
+            });
+
+            document.getElementById('message').textContent = '🔄 正在计算求解步骤...';
+            document.getElementById('message').className = 'message info';
+
+            // 使用setTimeout让UI有时间更新
+            setTimeout(() => {
+                const candidates = initCandidates(grid);
+                const result = solveWithRecording(grid, candidates, originalGrid, 0, 0, 0);
+
+                if (result) {
+                    isStepMode = true;
+                    currentStepIndex = 0;
+                    displayStep(0);
+
+                    document.getElementById('solveBtn').disabled = true;
+                    document.getElementById('undoBtn').disabled = false;
+                    document.getElementById('redoBtn').disabled = false;
+
+                    document.getElementById('message').textContent = `✅ 求解完成！共${solutionSteps.length}步`;
+                    document.getElementById('message').className = 'message success';
+                } else {
+                    document.getElementById('message').textContent = '❌ 无解！';
+                    document.getElementById('message').className = 'message error';
+                }
+            }, 100);
+        }
+
+        function solveWithRecording(grid, candidates, originalGrid, logicCount, guessCount, backtrackCount) {
+            // 约束传播
+            let progress = true;
+            while (progress) {
+                progress = false;
+
+                // 裸单数法
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (grid[row][col] === 0 && popcount(candidates[row][col]) === 1) {
+                            const value = getCandidatesList(candidates[row][col])[0];
+                            grid[row][col] = value;
+                            logicCount++;
+
+                            solutionSteps.push({
+                                grid: JSON.parse(JSON.stringify(grid)),
+                                original: originalGrid,
+                                row, col, value,
+                                className: 'constraint',
+                                description: `裸单数法：(${row+1},${col+1})=${value}`,
+                                logicSteps: logicCount,
+                                guesses: guessCount,
+                                backtracks: backtrackCount
+                            });
+
+                            eliminateValue(candidates, row, col, value);
+                            progress = true;
+                        }
+                    }
+                }
+
+                // 隐单数法
+                if (!progress) {
+                    const hiddenSingles = findHiddenSingles(grid, candidates);
+                    if (hiddenSingles.length > 0) {
+                        for (const { row, col, value } of hiddenSingles) {
+                            if (grid[row][col] === 0) {
+                                grid[row][col] = value;
+                                logicCount++;
+
+                                solutionSteps.push({
+                                    grid: JSON.parse(JSON.stringify(grid)),
+                                    original: originalGrid,
+                                    row, col, value,
+                                    className: 'constraint',
+                                    description: `隐单数法：(${row+1},${col+1})=${value}`,
+                                    logicSteps: logicCount,
+                                    guesses: guessCount,
+                                    backtracks: backtrackCount
+                                });
+
+                                eliminateValue(candidates, row, col, value);
+                                progress = true;
+                            }
+                        }
+                    }
+                }
+
+                // 数对消除
+                if (!progress) {
+                    if (findNakedPairs(grid, candidates)) {
+                        logicCount++;
+                        solutionSteps.push({
+                            grid: JSON.parse(JSON.stringify(grid)),
+                            original: originalGrid,
+                            description: '数对消除',
+                            logicSteps: logicCount,
+                            guesses: guessCount,
+                            backtracks: backtrackCount
+                        });
+                        progress = true;
+                    }
+                }
+
+                // 指向数对
+                if (!progress) {
+                    if (findPointingPairs(grid, candidates)) {
+                        logicCount++;
+                        solutionSteps.push({
+                            grid: JSON.parse(JSON.stringify(grid)),
+                            original: originalGrid,
+                            description: '指向数对',
+                            logicSteps: logicCount,
+                            guesses: guessCount,
+                            backtracks: backtrackCount
+                        });
+                        progress = true;
+                    }
+                }
+
+                // 检测矛盾
+                if (hasContradiction(grid, candidates)) {
+                    return false;
+                }
+            }
+
+            // 检查是否完成
+            let complete = true;
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0) {
+                        complete = false;
+                        break;
+                    }
+                }
+                if (!complete) break;
+            }
+            if (complete) return true;
+
+            // MRV启发式：选择候选数字最少的格子
+            const cell = findBestCell(grid, candidates);
+            if (!cell) return false;
+
+            const { row, col } = cell;
+            const possibleValues = getCandidatesList(candidates[row][col]);
+
+            // 回溯搜索
+            for (const value of possibleValues) {
+                guessCount++;
+
+                solutionSteps.push({
+                    grid: JSON.parse(JSON.stringify(grid)),
+                    original: originalGrid,
+                    row, col, value,
+                    className: 'trying',
+                    description: `猜测：(${row+1},${col+1})=${value}`,
+                    logicSteps: logicCount,
+                    guesses: guessCount,
+                    backtracks: backtrackCount
+                });
+
+                const gridCopy = grid.map(row => [...row]);
+                const candidatesCopy = candidates.map(row => [...row]);
+
+                grid[row][col] = value;
+                eliminateValue(candidates, row, col, value);
+
+                if (solveWithRecording(grid, candidates, originalGrid, logicCount, guessCount, backtrackCount)) {
+                    return true;
+                }
+
+                // 回溯
+                backtrackCount++;
+
+                solutionSteps.push({
+                    grid: JSON.parse(JSON.stringify(gridCopy)),
+                    original: originalGrid,
+                    row, col,
+                    className: 'backtrack',
+                    description: `回溯：(${row+1},${col+1})=${value}失败`,
+                    logicSteps: logicCount,
+                    guesses: guessCount,
+                    backtracks: backtrackCount
+                });
+
+                for (let r = 0; r < 9; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        grid[r][c] = gridCopy[r][c];
+                        candidates[r][c] = candidatesCopy[r][c];
+                    }
+                }
+            }
+
+            return false;
         }
 
         document.getElementById('speedSlider').addEventListener('input', function(e) {
