@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独求解器 - 可视化版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 650px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 0;
+            margin: 0 auto 30px;
+            width: fit-content;
+            border: 3px solid #333;
+            background: #333;
+        }
+
+        .sudoku-cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #999;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .sudoku-cell:focus {
+            outline: none;
+            background: #e3f2fd;
+            border: 2px solid #667eea;
+        }
+
+        .sudoku-cell.original {
+            background: #f5f5f5;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .sudoku-cell.solving {
+            background: #fff9c4;
+            color: #f57f17;
+            animation: pulse 0.5s;
+        }
+
+        .sudoku-cell.solved {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .sudoku-cell.backtrack {
+            background: #ffcdd2;
+            color: #c62828;
+            animation: shake 0.3s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* 3×3宫格的粗边框 */
+        .sudoku-cell:nth-child(9n+3),
+        .sudoku-cell:nth-child(9n+6) {
+            border-right: 3px solid #333;
+        }
+
+        .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+        .sudoku-cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 3px solid #333;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .speed-control label {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .speed-control input[type="range"] {
+            width: 200px;
+        }
+
+        .speed-value {
+            min-width: 80px;
+            text-align: center;
+            font-weight: bold;
+            color: #764ba2;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .solve-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .solve-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .stop-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stop-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .clear-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(250, 112, 154, 0.4);
+        }
+
+        .example-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .example-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .success {
+            color: #2e7d32;
+        }
+
+        .error {
+            color: #c62828;
+        }
+
+        .info {
+            color: #1565c0;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧩 数独求解器</h1>
+
+        <div class="sudoku-grid" id="sudokuGrid"></div>
+
+        <div class="controls">
+            <div class="speed-control">
+                <label>求解速度：</label>
+                <input type="range" id="speedSlider" min="0" max="200" value="50" step="10">
+                <span class="speed-value" id="speedValue">50ms</span>
+            </div>
+
+            <div class="button-group">
+                <button class="solve-btn" id="solveBtn" onclick="startSolving()">🚀 开始求解</button>
+                <button class="stop-btn" id="stopBtn" onclick="stopSolving()" disabled>⏸️ 停止</button>
+                <button class="clear-btn" id="clearBtn" onclick="clearGrid()">🗑️ 清空</button>
+                <button class="example-btn" id="exampleBtn" onclick="loadExample()">📝 示例</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">尝试次数</div>
+                <div class="stat-value" id="attempts">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">回溯次数</div>
+                <div class="stat-value" id="backtracks">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">已用时间</div>
+                <div class="stat-value" id="timeElapsed">0s</div>
+            </div>
+        </div>
+
+        <div class="message" id="message"></div>
+        <div class="info">💡 提示：输入1-9的数字，调整速度，点击"开始求解"观看求解过程</div>
+    </div>
+
+    <script>
+        let solving = false;
+        let originalGrid = [];
+        let attempts = 0;
+        let backtracks = 0;
+        let startTime = 0;
+        let timerInterval = null;
+
+        // 创建9×9网格
+        function createGrid() {
+            const grid = document.getElementById('sudokuGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 81; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'sudoku-cell';
+                input.maxLength = 1;
+                input.id = `cell-${i}`;
+
+                // 只允许输入1-9
+                input.addEventListener('input', function(e) {
+                    const value = e.target.value;
+                    if (value && (value < '1' || value > '9')) {
+                        e.target.value = '';
+                    }
+                });
+
+                grid.appendChild(input);
+            }
+        }
+
+        // 获取网格数据
+        function getGridData() {
+            const grid = [];
+            for (let i = 0; i < 9; i++) {
+                grid[i] = [];
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.getElementById(`cell-${i * 9 + j}`);
+                    const value = cell.value;
+                    grid[i][j] = value ? parseInt(value) : 0;
+                }
+            }
+            return grid;
+        }
+
+        // 更新单元格显示
+        function updateCell(row, col, value, className = '') {
+            const cell = document.getElementById(`cell-${row * 9 + col}`);
+            cell.value = value || '';
+
+            // 移除所有状态类
+            cell.classList.remove('solving', 'solved', 'backtrack');
+
+            // 添加新的状态类
+            if (className) {
+                cell.classList.add(className);
+            }
+        }
+
+        // 检查数字是否可以放在指定位置
+        function isValid(grid, row, col, num) {
+            // 检查行
+            for (let x = 0; x < 9; x++) {
+                if (grid[row][x] === num) {
+                    return false;
+                }
+            }
+
+            // 检查列
+            for (let x = 0; x < 9; x++) {
+                if (grid[x][col] === num) {
+                    return false;
+                }
+            }
+
+            // 检查3×3宫格
+            const startRow = row - row % 3;
+            const startCol = col - col % 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (grid[i + startRow][j + startCol] === num) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        // 延迟函数
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 异步回溯算法求解数独
+        async function solveAsync(grid) {
+            if (!solving) return false;
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (!solving) return false;
+
+                            attempts++;
+                            document.getElementById('attempts').textContent = attempts;
+
+                            if (isValid(grid, row, col, num)) {
+                                grid[row][col] = num;
+                                updateCell(row, col, num, 'solving');
+
+                                const speed = parseInt(document.getElementById('speedSlider').value);
+                                await delay(speed);
+
+                                if (await solveAsync(grid)) {
+                                    updateCell(row, col, num, 'solved');
+                                    return true;
+                                }
+
+                                if (!solving) return false;
+
+                                // 回溯
+                                backtracks++;
+                                document.getElementById('backtracks').textContent = backtracks;
+
+                                grid[row][col] = 0;
+                                updateCell(row, col, 0, 'backtrack');
+                                await delay(speed / 2);
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // 开始求解
+        async function startSolving() {
+            const grid = getGridData();
+            originalGrid = JSON.parse(JSON.stringify(grid));
+
+            // 标记原始输入
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    if (originalGrid[i][j] !== 0) {
+                        const cell = document.getElementById(`cell-${i * 9 + j}`);
+                        cell.classList.add('original');
+                        cell.disabled = true;
+                    }
+                }
+            }
+
+            solving = true;
+            attempts = 0;
+            backtracks = 0;
+            startTime = Date.now();
+
+            // 更新按钮状态
+            document.getElementById('solveBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('clearBtn').disabled = true;
+            document.getElementById('exampleBtn').disabled = true;
+
+            // 启动计时器
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('timeElapsed').textContent = elapsed + 's';
+            }, 100);
+
+            const message = document.getElementById('message');
+            message.textContent = '🔄 正在求解...';
+            message.className = 'message info';
+
+            const result = await solveAsync(grid);
+
+            // 停止计时器
+            clearInterval(timerInterval);
+
+            if (result && solving) {
+                message.textContent = '✅ 求解成功！';
+                message.className = 'message success';
+            } else if (!solving) {
+                message.textContent = '⏸️ 已停止';
+                message.className = 'message info';
+            } else {
+                message.textContent = '❌ 无解！请检查输入';
+                message.className = 'message error';
+            }
+
+            // 恢复按钮状态
+            document.getElementById('solveBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('clearBtn').disabled = false;
+            document.getElementById('exampleBtn').disabled = false;
+
+            solving = false;
+        }
+
+        // 停止求解
+        function stopSolving() {
+            solving = false;
+            clearInterval(timerInterval);
+        }
+
+        // 清空网格
+        function clearGrid() {
+            for (let i = 0; i < 81; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                cell.value = '';
+                cell.disabled = false;
+                cell.classList.remove('original', 'solving', 'solved', 'backtrack');
+            }
+
+            document.getElementById('attempts').textContent = '0';
+            document.getElementById('backtracks').textContent = '0';
+            document.getElementById('timeElapsed').textContent = '0s';
+            document.getElementById('message').textContent = '';
+
+            attempts = 0;
+            backtracks = 0;
+        }
+
+        // 加载示例
+        function loadExample() {
+            clearGrid();
+
+            const example = [
+                [5, 3, 0, 0, 7, 0, 0, 0, 0],
+                [6, 0, 0, 1, 9, 5, 0, 0, 0],
+                [0, 9, 8, 0, 0, 0, 0, 6, 0],
+                [8, 0, 0, 0, 6, 0, 0, 0, 3],
+                [4, 0, 0, 8, 0, 3, 0, 0, 1],
+                [7, 0, 0, 0, 2, 0, 0, 0, 6],
+                [0, 6, 0, 0, 0, 0, 2, 8, 0],
+                [0, 0, 0, 4, 1, 9, 0, 0, 5],
+                [0, 0, 0, 0, 8, 0, 0, 7, 9]
+            ];
+
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.getElementById(`cell-${i * 9 + j}`);
+                    if (example[i][j] !== 0) {
+                        cell.value = example[i][j];
+                    }
+                }
+            }
+
+            document.getElementById('message').textContent = '📝 已加载示例数独';
+            document.getElementById('message').className = 'message info';
+        }
+
+        // 更新速度显示
+        document.getElementById('speedSlider').addEventListener('input', function(e) {
+            document.getElementById('speedValue').textContent = e.target.value + 'ms';
+        });
+
+        // 页面加载时创建网格
+        window.onload = function() {
+            createGrid();
+        };
+    </script>
+</body>
+</html>
