@@ -299,14 +299,20 @@
         // 位运算工具函数
         const ALL_CANDIDATES = 0b111111111; // 1-9都可能
 
-        function popcount(n) {
-            // 计算二进制中1的个数
+        // popcount查表优化
+        const POPCOUNT_TABLE = new Uint8Array(512);
+        for (let i = 0; i < 512; i++) {
             let count = 0;
+            let n = i;
             while (n) {
                 count += n & 1;
                 n >>= 1;
             }
-            return count;
+            POPCOUNT_TABLE[i] = count;
+        }
+
+        function popcount(n) {
+            return POPCOUNT_TABLE[n];
         }
 
         function getCandidatesList(mask) {
@@ -486,6 +492,153 @@
             return found;
         }
 
+        function findNakedPairs(grid, candidates) {
+            let eliminated = false;
+
+            // 检查每一行
+            for (let row = 0; row < 9; row++) {
+                const cells = [];
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0 && popcount(candidates[row][col]) === 2) {
+                        cells.push({ col, mask: candidates[row][col] });
+                    }
+                }
+                // 找出候选数字相同的格子对
+                for (let i = 0; i < cells.length; i++) {
+                    for (let j = i + 1; j < cells.length; j++) {
+                        if (cells[i].mask === cells[j].mask) {
+                            // 从该行其他格子中删除这两个数字
+                            for (let col = 0; col < 9; col++) {
+                                if (col !== cells[i].col && col !== cells[j].col && grid[row][col] === 0) {
+                                    const before = candidates[row][col];
+                                    candidates[row][col] &= ~cells[i].mask;
+                                    if (before !== candidates[row][col]) eliminated = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 检查每一列
+            for (let col = 0; col < 9; col++) {
+                const cells = [];
+                for (let row = 0; row < 9; row++) {
+                    if (grid[row][col] === 0 && popcount(candidates[row][col]) === 2) {
+                        cells.push({ row, mask: candidates[row][col] });
+                    }
+                }
+                for (let i = 0; i < cells.length; i++) {
+                    for (let j = i + 1; j < cells.length; j++) {
+                        if (cells[i].mask === cells[j].mask) {
+                            for (let row = 0; row < 9; row++) {
+                                if (row !== cells[i].row && row !== cells[j].row && grid[row][col] === 0) {
+                                    const before = candidates[row][col];
+                                    candidates[row][col] &= ~cells[i].mask;
+                                    if (before !== candidates[row][col]) eliminated = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 检查每个宫格
+            for (let boxRow = 0; boxRow < 3; boxRow++) {
+                for (let boxCol = 0; boxCol < 3; boxCol++) {
+                    const cells = [];
+                    for (let r = 0; r < 3; r++) {
+                        for (let c = 0; c < 3; c++) {
+                            const row = boxRow * 3 + r;
+                            const col = boxCol * 3 + c;
+                            if (grid[row][col] === 0 && popcount(candidates[row][col]) === 2) {
+                                cells.push({ row, col, mask: candidates[row][col] });
+                            }
+                        }
+                    }
+                    for (let i = 0; i < cells.length; i++) {
+                        for (let j = i + 1; j < cells.length; j++) {
+                            if (cells[i].mask === cells[j].mask) {
+                                for (let r = 0; r < 3; r++) {
+                                    for (let c = 0; c < 3; c++) {
+                                        const row = boxRow * 3 + r;
+                                        const col = boxCol * 3 + c;
+                                        if ((row !== cells[i].row || col !== cells[i].col) &&
+                                            (row !== cells[j].row || col !== cells[j].col) &&
+                                            grid[row][col] === 0) {
+                                            const before = candidates[row][col];
+                                            candidates[row][col] &= ~cells[i].mask;
+                                            if (before !== candidates[row][col]) eliminated = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return eliminated;
+        }
+
+        function findPointingPairs(grid, candidates) {
+            let eliminated = false;
+
+            // 检查每个宫格
+            for (let boxRow = 0; boxRow < 3; boxRow++) {
+                for (let boxCol = 0; boxCol < 3; boxCol++) {
+                    // 对每个数字检查
+                    for (let num = 1; num <= 9; num++) {
+                        const mask = 1 << (num - 1);
+                        const positions = [];
+
+                        // 找出该数字在宫格中的所有位置
+                        for (let r = 0; r < 3; r++) {
+                            for (let c = 0; c < 3; c++) {
+                                const row = boxRow * 3 + r;
+                                const col = boxCol * 3 + c;
+                                if (grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                                    positions.push({ row, col });
+                                }
+                            }
+                        }
+
+                        if (positions.length > 1) {
+                            // 检查是否都在同一行
+                            const sameRow = positions.every(p => p.row === positions[0].row);
+                            if (sameRow) {
+                                const row = positions[0].row;
+                                // 从该行其他宫格中删除这个数字
+                                for (let col = 0; col < 9; col++) {
+                                    const inBox = Math.floor(col / 3) === boxCol;
+                                    if (!inBox && grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                                        candidates[row][col] &= ~mask;
+                                        eliminated = true;
+                                    }
+                                }
+                            }
+
+                            // 检查是否都在同一列
+                            const sameCol = positions.every(p => p.col === positions[0].col);
+                            if (sameCol) {
+                                const col = positions[0].col;
+                                // 从该列其他宫格中删除这个数字
+                                for (let row = 0; row < 9; row++) {
+                                    const inBox = Math.floor(row / 3) === boxRow;
+                                    if (!inBox && grid[row][col] === 0 && (candidates[row][col] & mask)) {
+                                        candidates[row][col] &= ~mask;
+                                        eliminated = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return eliminated;
+        }
+
         async function propagateConstraints(grid, candidates, speed) {
             let progress = true;
             while (progress && solving) {
@@ -530,6 +683,24 @@
                                 progress = true;
                             }
                         }
+                    }
+                }
+
+                // 数对消除：候选数字相同的格子对
+                if (!progress) {
+                    if (findNakedPairs(grid, candidates)) {
+                        logicSteps++;
+                        document.getElementById('logic').textContent = logicSteps;
+                        progress = true;
+                    }
+                }
+
+                // 指向数对：宫格内数字指向同一行/列
+                if (!progress) {
+                    if (findPointingPairs(grid, candidates)) {
+                        logicSteps++;
+                        document.getElementById('logic').textContent = logicSteps;
+                        progress = true;
                     }
                 }
 
