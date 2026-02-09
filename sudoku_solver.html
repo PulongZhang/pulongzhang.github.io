@@ -257,6 +257,95 @@
         .success { color: #2e7d32; }
         .error { color: #c62828; }
         .info { color: #1565c0; font-size: 14px; }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 20px;
+                max-width: 100%;
+            }
+
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 8px;
+            }
+
+            .subtitle {
+                font-size: 0.8em;
+                margin-bottom: 20px;
+            }
+
+            .sudoku-cell {
+                width: 35px;
+                height: 35px;
+                font-size: 18px;
+            }
+
+            .button-group {
+                gap: 8px;
+            }
+
+            button {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+
+            .stat-label {
+                font-size: 10px;
+            }
+
+            .stat-value {
+                font-size: 16px;
+            }
+
+            .message {
+                font-size: 14px;
+            }
+
+            .info {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .sudoku-cell {
+                width: 30px;
+                height: 30px;
+                font-size: 16px;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .speed-control {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .speed-control input[type="range"] {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
